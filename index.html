@@ -129,24 +129,32 @@
     }
 
     async function processText(text) {
-        document.getElementById("result").innerHTML = "📤 Sending to AI...";
-        try {
-            const response = await fetch(BACKEND_URL, {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ text: text })
-            });
-            const data = await response.json();
-            if (response.ok) {
-                document.getElementById("result").innerHTML = `✅ Task added: ${data.task.title}`;
+    document.getElementById("result").innerHTML = "📤 Sending to AI...";
+    try {
+        const response = await fetch(BACKEND_URL, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ text: text })
+        });
+        const data = await response.json();
+        if (response.ok) {
+            let item = data.task || data.event;   // works for both task and event
+            if (item) {
+                document.getElementById("result").innerHTML = `✅ Added: ${item.title}`;
+                if (data.event && data.event.link) {
+                    document.getElementById("result").innerHTML += `<br><a href="${data.event.link}" target="_blank">Open in Calendar</a>`;
+                }
             } else {
-                document.getElementById("result").innerHTML = `❌ Error: ${data.detail}`;
+                document.getElementById("result").innerHTML = "✅ Added (unknown type)";
             }
-        } catch (err) {
-            document.getElementById("result").innerHTML = `❌ Network error: ${err.message}`;
+        } else {
+            document.getElementById("result").innerHTML = `❌ Error: ${data.detail}`;
         }
-        document.getElementById("status").innerHTML = "";
+    } catch (err) {
+        document.getElementById("result").innerHTML = `❌ Network error: ${err.message}`;
     }
+    document.getElementById("status").innerHTML = "";
+}
 </script>
 </body>
 </html>
