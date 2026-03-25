@@ -1,9 +1,10 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
-    <title>Voice Task to Google Tasks</title>
+    <title>Voice Task to Google Tasks/Calendar</title>
     <style>
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
@@ -11,14 +12,16 @@
             margin-top: 2rem;
             background: #f0f2f5;
         }
+
         .container {
             max-width: 600px;
             margin: auto;
             background: white;
             padding: 2rem;
             border-radius: 1rem;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
         }
+
         button {
             font-size: 2rem;
             padding: 1rem 2rem;
@@ -30,13 +33,16 @@
             margin: 1rem;
             transition: background 0.2s;
         }
+
         button:disabled {
             background: #ccc;
             cursor: not-allowed;
         }
+
         button:active {
             background: #0c5aad;
         }
+
         input[type="text"] {
             width: 80%;
             padding: 0.8rem;
@@ -45,16 +51,20 @@
             border-radius: 2rem;
             margin: 1rem;
         }
-        #status, #result {
+
+        #status,
+        #result {
             margin-top: 1rem;
             font-size: 1rem;
             color: #555;
         }
+
         .fallback {
             margin-top: 2rem;
             padding-top: 1rem;
             border-top: 1px solid #eee;
         }
+
         .info {
             font-size: 0.8rem;
             color: #888;
@@ -62,99 +72,174 @@
         }
     </style>
 </head>
+
 <body>
-<div class="container">
-    <h1>🗣️ Voice Task</h1>
-    <p>Speak a task in Sinhala or English</p>
-    <button id="recordBtn" onclick="startRecording()">🎙️ Speak</button>
-    <div id="status"></div>
-    <div id="result"></div>
+    <div class="container">
+        <h1>🗣️ Voice Task</h1>
+        <p>Speak a task or ask about your plans</p>
+        <button id="recordBtn" onclick="startRecording()">🎙️ Speak</button>
+        <div id="status"></div>
+        <div id="result"></div>
 
-    <div class="fallback">
-        <p>Or type your task:</p>
-        <input type="text" id="textInput" placeholder="e.g., හෙට සවස 5 ට කිරි ගන්න">
-        <button onclick="sendText()">➕ Add Task</button>
+        <div class="fallback">
+            <p>Or type your task / query:</p>
+            <input type="text" id="textInput" placeholder="e.g., හෙට සවස 5 ට කිරි ගන්න හෝ අද සැලසුම් මොනවාද?">
+            <button onclick="sendText()">➕ Send</button>
+        </div>
+        <div class="info">
+            📱 Works on phone too! Use Chrome, Edge, or Safari.<br>
+            🔊 After adding or querying, the result will be spoken aloud (Sinhala if available).
+        </div>
     </div>
-    <div class="info">
-        📱 Works on phone too! Use Chrome, Edge, or Safari.
-    </div>
-</div>
 
-<script>
-    // Replace with your Render backend URL
-    const BACKEND_URL = "https://voice-task-backend-evpc.onrender.com/process_task";
+    <script>
+        const BACKEND_URL = "https://voice-task-backend-evpc.onrender.com/process_task"; // Replace with your backend URL
+        // const BACKEND_URL = "http://localhost:8000/process_task"; // Replace with your backend URL
 
-    let recognition;
-    if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
-        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-        recognition = new SpeechRecognition();
-        recognition.lang = 'si-LK';   // Sinhala; change to 'en-US' for English
-        recognition.interimResults = false;
-        recognition.maxAlternatives = 1;
-    } else {
-        alert("Your browser does not support speech recognition. Please use Chrome, Edge, or Safari.");
-        document.getElementById("recordBtn").disabled = true;
-    }
 
-    function startRecording() {
-        if (!recognition) return;
-        document.getElementById("recordBtn").disabled = true;
-        document.getElementById("status").innerHTML = "🎤 Listening...";
-        recognition.start();
-    }
-
-    recognition.onresult = async (event) => {
-        const text = event.results[0][0].transcript;
-        document.getElementById("status").innerHTML = `✅ Heard: "${text}"`;
-        await processText(text);
-    };
-
-    recognition.onerror = (event) => {
-        document.getElementById("status").innerHTML = `❌ Error: ${event.error}`;
-        document.getElementById("recordBtn").disabled = false;
-    };
-
-    recognition.onend = () => {
-        document.getElementById("recordBtn").disabled = false;
-    };
-
-    async function sendText() {
-        const text = document.getElementById("textInput").value.trim();
-        if (!text) {
-            alert("Please enter a task.");
-            return;
-        }
-        await processText(text);
-        document.getElementById("textInput").value = "";
-    }
-
-    async function processText(text) {
-    document.getElementById("result").innerHTML = "📤 Sending to AI...";
-    try {
-        const response = await fetch(BACKEND_URL, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ text: text })
-        });
-        const data = await response.json();
-        if (response.ok) {
-            let item = data.task || data.event;   // works for both task and event
-            if (item) {
-                document.getElementById("result").innerHTML = `✅ Added: ${item.title}`;
-                if (data.event && data.event.link) {
-                    document.getElementById("result").innerHTML += `<br><a href="${data.event.link}" target="_blank">Open in Calendar</a>`;
-                }
-            } else {
-                document.getElementById("result").innerHTML = "✅ Added (unknown type)";
-            }
+        // ---------- Speech Recognition (input) ----------
+        let recognition;
+        if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
+            const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+            recognition = new SpeechRecognition();
+            recognition.lang = 'si-LK';   // Sinhala; change to 'en-US' for English
+            recognition.interimResults = false;
+            recognition.maxAlternatives = 1;
         } else {
-            document.getElementById("result").innerHTML = `❌ Error: ${data.detail}`;
+            alert("Your browser does not support speech recognition. Please use Chrome, Edge, or Safari.");
+            document.getElementById("recordBtn").disabled = true;
         }
-    } catch (err) {
-        document.getElementById("result").innerHTML = `❌ Network error: ${err.message}`;
-    }
-    document.getElementById("status").innerHTML = "";
-}
-</script>
+
+        function startRecording() {
+            if (!recognition) return;
+            document.getElementById("recordBtn").disabled = true;
+            document.getElementById("status").innerHTML = "🎤 Listening...";
+            recognition.start();
+        }
+
+        recognition.onresult = async (event) => {
+            const text = event.results[0][0].transcript;
+            document.getElementById("status").innerHTML = `✅ Heard: "${text}"`;
+            await processText(text);
+        };
+
+        recognition.onerror = (event) => {
+            document.getElementById("status").innerHTML = `❌ Error: ${event.error}`;
+            document.getElementById("recordBtn").disabled = false;
+        };
+
+        recognition.onend = () => {
+            document.getElementById("recordBtn").disabled = false;
+        };
+
+        async function sendText() {
+            const text = document.getElementById("textInput").value.trim();
+            if (!text) {
+                alert("Please enter a task or query.");
+                return;
+            }
+            await processText(text);
+            document.getElementById("textInput").value = "";
+        }
+
+        // ---------- Text‑to‑Speech (output) with better voice selection ----------
+        function speakText(message, lang = 'si-LK') {
+            if (!('speechSynthesis' in window)) {
+                console.log("Speech synthesis not supported");
+                return;
+            }
+            // Cancel any ongoing speech
+            window.speechSynthesis.cancel();
+
+            const utterance = new SpeechSynthesisUtterance(message);
+            // Get available voices (may be empty initially)
+            let voices = window.speechSynthesis.getVoices();
+            if (voices.length === 0) {
+                // Voices not loaded yet; wait for the event
+                window.speechSynthesis.onvoiceschanged = () => {
+                    voices = window.speechSynthesis.getVoices();
+                    setVoiceAndSpeak(utterance, voices, lang);
+                };
+            } else {
+                setVoiceAndSpeak(utterance, voices, lang);
+            }
+        }
+
+        function setVoiceAndSpeak(utterance, voices, lang) {
+            // Try to find a voice matching the language code
+            // For Sinhala, try both 'si-LK' and 'si'
+            const targetLangs = lang === 'si-LK' ? ['si-LK', 'si'] : [lang];
+            let selectedVoice = null;
+            for (const targetLang of targetLangs) {
+                selectedVoice = voices.find(voice => voice.lang === targetLang);
+                if (selectedVoice) break;
+            }
+            if (selectedVoice) {
+                utterance.voice = selectedVoice;
+                utterance.lang = selectedVoice.lang;
+                console.log(`Using voice: ${selectedVoice.name} (${selectedVoice.lang})`);
+            } else {
+                // Fallback: set the lang attribute but let browser choose voice
+                utterance.lang = lang;
+                console.warn(`No voice found for language ${lang}, using browser default.`);
+            }
+            utterance.rate = 0.9;
+            utterance.pitch = 1.0;
+            window.speechSynthesis.speak(utterance);
+        }
+
+        // ---------- Main processing ----------
+        async function processText(text) {
+            document.getElementById("result").innerHTML = "📤 Sending to AI...";
+            try {
+                const response = await fetch(BACKEND_URL, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ text: text })
+                });
+                const data = await response.json();
+                if (response.ok) {
+                    // Handle query result (spoken summary)
+                    if (data.query_result) {
+                        const summary = data.query_result;
+                        document.getElementById("result").innerHTML = `📋 ${summary}`;
+                        // Use the language detected by backend (si or en)
+                        const lang = data.language === 'si' ? 'si-LK' : 'en-US';
+                        speakText(summary, lang);
+                    }
+                    // Handle event creation
+                    else if (data.event) {
+                        let message = `Added: ${data.event.title}`;
+                        document.getElementById("result").innerHTML = `✅ ${message}`;
+                        if (data.event.link) {
+                            document.getElementById("result").innerHTML += `<br><a href="${data.event.link}" target="_blank">Open in Calendar</a>`;
+                        }
+                        speakText(message, 'si-LK'); // default to Sinhala; backend may later provide language
+                    }
+                    // Handle task creation
+                    else if (data.task) {
+                        let message = `Added: ${data.task.title}`;
+                        document.getElementById("result").innerHTML = `✅ ${message}`;
+                        speakText(message, 'si-LK');
+                    }
+                    // Fallback
+                    else {
+                        document.getElementById("result").innerHTML = "✅ Success";
+                        speakText("Success", 'si-LK');
+                    }
+                } else {
+                    const errorMsg = `Error: ${data.detail}`;
+                    document.getElementById("result").innerHTML = `❌ ${errorMsg}`;
+                    speakText(errorMsg, 'si-LK');
+                }
+            } catch (err) {
+                const errorMsg = `Network error: ${err.message}`;
+                document.getElementById("result").innerHTML = `❌ ${errorMsg}`;
+                speakText(errorMsg, 'si-LK');
+            }
+            document.getElementById("status").innerHTML = "";
+        }
+    </script>
 </body>
+
 </html>
